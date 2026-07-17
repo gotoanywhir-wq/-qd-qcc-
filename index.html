@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合作方合规排查</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>if(typeof XLSX==='undefined')document.write('<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f5f6f8;color:#1e293b;min-height:100vh}
+
+.header{background:#fff;border-bottom:1px solid #e2e8f0;padding:14px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+.header h1{font-size:17px;font-weight:700;color:#0f172a;white-space:nowrap}
+.header .db-area{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b}
+.header .db-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.header .db-dot.off{background:#cbd5e1}.header .db-dot.on{background:#16a34a}
+.hbtn{padding:5px 12px;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-weight:500;transition:all .15s}
+.hbtn-outline{background:#fff;color:#475569;border:1px solid #d1d5db !important}.hbtn-outline:hover{background:#f8fafc;border-color:#94a3b8 !important}
+.hbtn-primary{background:#1e40af;color:#fff}.hbtn-primary:hover{background:#1e3a8a}
+.hbtn-danger{background:#fff;color:#dc2626;border:1px solid #fecaca !important}.hbtn-danger:hover{background:#fef2f2}
+
+.main{max-width:960px;margin:0 auto;padding:20px 16px}
+
+/* Quick search */
+.section-card{background:#fff;border-radius:10px;padding:20px;margin-bottom:16px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.section-label{font-size:13px;font-weight:600;color:#334155;margin-bottom:10px}
+.search-row{display:flex;gap:8px}
+.search-row input{flex:1;padding:11px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;outline:none;transition:border .15s}
+.search-row input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.search-row input::placeholder{color:#9ca3af}
+.search-row button{padding:11px 22px;background:#1e40af;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+.search-row button:hover{background:#1e3a8a}
+.search-row button:disabled{background:#93c5fd;cursor:not-allowed}
+
+.opts{display:flex;gap:14px;font-size:12px;color:#6b7280;margin-top:8px;flex-wrap:wrap}
+.opts label{display:flex;align-items:center;gap:4px;cursor:pointer;color:#475569}
+.opts input[type="checkbox"]{accent-color:#3b82f6}
+
+/* Quick result */
+.qr-card{margin-top:12px;padding:16px;border-radius:8px;border:1.5px solid;display:none}
+.qr-card.show{display:block}
+.qr-card.hit{border-color:#fca5a5;background:#fef2f2}
+.qr-card.suspect{border-color:#fde68a;background:#fffbeb}
+.qr-card.safe{border-color:#86efac;background:#f0fdf4}
+.qr-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qr-tag{font-size:12px;font-weight:700;padding:2px 10px;border-radius:4px}
+.qt-hit{background:#dc2626;color:#fff}.qt-suspect{background:#d97706;color:#fff}.qt-safe{background:#16a34a;color:#fff}
+.qr-name{font-size:16px;font-weight:700;color:#0f172a;flex:1;min-width:0;word-break:break-all}
+.qr-actions{display:flex;gap:6px;flex-shrink:0}
+.qr-actions a{font-size:12px;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:5px;transition:all .15s;white-space:nowrap}
+.qcc-link{color:#ea580c;border:1.5px solid #fb923c}.qcc-link:hover{background:#ea580c;color:#fff}
+.qr-detail{margin-top:10px;font-size:13px;color:#475569;line-height:1.8}
+.qr-detail mark{background:#fde68a;color:#78350f;padding:0 2px;border-radius:2px}
+.qr-src{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px}
+.src-entity{background:#fff7ed;color:#ea580c}.src-meu{background:#eef2ff;color:#4338ca}.src-cmicc{background:#fff1f2;color:#be123c}.src-cmc{background:#ecfdf5;color:#047857}.src-sdn{background:#faf5ff;color:#7e22ce}
+.qr-empty{margin-top:8px;color:#6b7280;font-size:13px}
+
+/* Batch */
+.batch-input{display:flex;gap:8px;margin-bottom:8px}
+.batch-input textarea{flex:1;min-height:90px;max-height:220px;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;resize:vertical;outline:none;line-height:1.7;font-family:inherit}
+.batch-input textarea:focus{border-color:#3b82f6}
+.batch-input textarea::placeholder{color:#9ca3af}
+.batch-actions{display:flex;flex-direction:column;gap:6px;min-width:96px}
+.btn-action{padding:10px;background:#1e40af;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-action:hover{background:#1e3a8a}
+.btn-action:disabled{background:#93c5fd;cursor:not-allowed}
+.btn-upload{position:relative;background:#fff;color:#475569;border:1.5px solid #d1d5db !important}
+.btn-upload:hover{color:#1e293b;border-color:#94a3b8 !important}
+.btn-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.batch-hint{font-size:11px;color:#94a3b8;margin-top:4px}
+
+/* Batch results */
+.batch-results{margin-top:16px;display:none}
+.batch-results.show{display:block}
+.summary-bar{display:flex;gap:20px;padding:14px;border-radius:8px;margin-bottom:12px;justify-content:center;font-size:13px;font-weight:500}
+.summary-bar.red{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.summary-bar.yellow{background:#fffbeb;color:#d97706;border:1px solid #fde68a}
+.summary-bar.green{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.sb-item{display:flex;align-items:center;gap:6px}
+.sb-num{font-size:22px;font-weight:700}
+.sb-num.nr{color:#dc2626}.sb-num.ny{color:#d97706}.sb-num.ng{color:#16a34a}
+
+.tbl-wrap{max-height:500px;overflow-y:auto;border-radius:8px;border:1px solid #e2e8f0}
+.result-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.result-tbl th{background:#f8fafc;padding:8px 10px;text-align:left;color:#64748b;font-weight:600;position:sticky;top:0;z-index:1;border-bottom:2px solid #e2e8f0}
+.result-tbl td{padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top}
+.result-tbl tr:hover td{background:#f8fafc}
+.tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.tag-hit{background:#fee2e2;color:#dc2626}.tag-suspect{background:#fef3c7;color:#d97706}.tag-safe{background:#dcfce7;color:#16a34a}
+.result-tbl .qcc{color:#ea580c;text-decoration:none;font-size:11px;font-weight:500;border:1.5px solid #fb923c;border-radius:4px;padding:1px 7px;white-space:nowrap;transition:all .15s}
+.result-tbl .qcc:hover{background:#ea580c;color:#fff}
+.r-src{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:3px}
+.detail-toggle{color:#2563eb;cursor:pointer;font-size:11px}.detail-toggle:hover{text-decoration:underline}
+.detail-row{display:none}.detail-row.open{display:table-row}
+.detail-row td{background:#f8fafc !important;padding:12px 16px}
+.detail-content{font-size:12px;color:#475569;line-height:1.8}
+.detail-content .df{display:flex;gap:6px;padding:2px 0}
+.detail-content .dl{color:#94a3b8;min-width:90px;flex-shrink:0;font-size:11px}
+.detail-content .dv{color:#1e293b;word-break:break-all}
+.detail-content .dv mark{background:#fde68a;color:#78350f;padding:0 2px;border-radius:2px}
+
+.export-bar{margin-top:10px;display:flex;justify-content:flex-end}
+.btn-export{padding:8px 18px;background:#fff;color:#334155;border:1px solid #d1d5db;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;transition:all .15s}
+.btn-export:hover{background:#f9fafb;border-color:#94a3b8}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:14px;padding:28px;width:90%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal h3{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:14px}
+.modal .drop-zone{border:2px dashed #d1d5db;border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.modal .drop-zone:hover,.modal .drop-zone.dragover{border-color:#3b82f6;background:#f0f7ff}
+.modal .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.modal .drop-zone p{color:#475569;font-size:14px;font-weight:500}
+.modal .drop-zone .sub{color:#94a3b8;font-size:12px;margin-top:6px}
+.modal .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.modal .modal-foot button{padding:8px 18px;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:500}
+.modal .btn-cancel{background:#f1f5f9;color:#475569}.modal .btn-cancel:hover{background:#e2e8f0}
+
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);padding:10px 22px;border-radius:8px;font-size:13px;font-weight:500;z-index:200;transition:transform .3s ease;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{background:#f0fdf4;color:#16a34a;border:1px solid #86efac}
+.toast.error{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.toast.info{background:#eff6ff;color:#2563eb;border:1px solid #93c5fd}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+<div id="modal" class="modal-overlay">
+  <div class="modal">
+    <h3>上传制裁清单</h3>
+    <div class="drop-zone" id="dropZone">
+      <p>点击或拖拽 Excel 文件到此处</p>
+      <div class="sub">.xlsx / .xls · 所有 Sheet 自动识别 · 数据保存到浏览器</div>
+      <input type="file" id="modalFileInput" accept=".xlsx,.xls">
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" id="modalClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <h1>合作方合规排查</h1>
+  <div class="db-area">
+    <span class="db-dot off" id="dbDot"></span>
+    <span id="dbInfo">未加载清单</span>
+    <button class="hbtn hbtn-primary" id="btnUpload">上传清单</button>
+    <button class="hbtn hbtn-danger" id="btnDel" style="display:none">删除</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="section-card">
+    <div class="section-label">快速检索</div>
+    <div class="search-row">
+      <input type="text" id="quickInput" placeholder="输入企业名称，回车检索…" autocomplete="off">
+      <button id="btnQuick" disabled>检索</button>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="fuzzyOpt" checked> 模糊匹配</label>
+      <label><input type="checkbox" id="caseOpt"> 区分大小写</label>
+    </div>
+    <div id="quickResult"></div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-label">批量排查</div>
+    <div class="batch-input">
+      <textarea id="batchText" placeholder="粘贴合作方名称，每行一个&#10;例：&#10;华为技术有限公司&#10;杭州海康威视数字技术股份有限公司&#10;北京某某科技有限公司"></textarea>
+      <div class="batch-actions">
+        <button class="btn-action" id="btnBatch" disabled>开始排查</button>
+        <button class="btn-action btn-upload">上传名单<input type="file" id="batchFileInput" accept=".txt,.csv,.xlsx,.xls"></button>
+      </div>
+    </div>
+    <div class="batch-hint">提示：可直接从 Excel 复制一列企业名粘贴，或上传 .txt / .csv / .xlsx 名单文件</div>
+
+    <div class="batch-results" id="batchResults">
+      <div class="summary-bar" id="summaryBar"></div>
+      <div class="tbl-wrap">
+        <table class="result-tbl">
+          <thead><tr><th style="width:30px">#</th><th>合作方名称</th><th style="width:60px">结果</th><th>匹配详情</th><th style="width:56px">企查查</th></tr></thead>
+          <tbody id="batchBody"></tbody>
+        </table>
+      </div>
+      <div class="export-bar">
+        <button class="btn-export" id="btnExport">导出 Excel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DB_NAME='ComplianceDB',DB_VER=3,STORE='data';
+let allRecords=[],sheetInfo=[],currentFileName='';
+const SRC={'實體清單':{cls:'src-entity',l:'实体清单'},'MEU清单':{cls:'src-meu',l:'MEU清单'},'CMICC':{cls:'src-cmicc',l:'CMICC'},'CMC List':{cls:'src-cmc',l:'CMC List'},'SDN List':{cls:'src-sdn',l:'SDN List'}};
+function srcMeta(n){return SRC[n]||{cls:'src-entity',l:n}}
+
+function odb(){return new Promise((r,j)=>{const q=indexedDB.open(DB_NAME,DB_VER);q.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE)};q.onsuccess=e=>r(e.target.result);q.onerror=e=>j(e.target.error);q.onblocked=()=>console.warn('DB blocked')})}
+async function put(k,v){const d=await odb();return new Promise((r,j)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put(v,k);t.oncomplete=()=>r();t.onerror=e=>j(e.target.error)})}
+async function get(k){const d=await odb();return new Promise((r,j)=>{const t=d.transaction(STORE,'readonly');const q=t.objectStore(STORE).get(k);q.onsuccess=()=>r(q.result);q.onerror=e=>j(e.target.error)})}
+async function del(k){const d=await odb();return new Promise((r,j)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).delete(k);t.oncomplete=()=>r();t.onerror=e=>j(e.target.error)})}
+async function saveDB(){await put('records',allRecords);await put('sheets',sheetInfo);await put('meta',{name:currentFileName,time:new Date().toLocaleString('zh-CN')});console.log('saveDB done:',allRecords.length,'records')}
+async function loadDB(){try{const r=await get('records'),s=await get('sheets'),m=await get('meta');console.log('loadDB:',{hasRecords:!!r,len:r?.length,hasSheets:!!s,hasMeta:!!m});if(r&&r.length){allRecords=r;sheetInfo=s||[];currentFileName=m?.name||'';return m}return null}catch(e){console.error('loadDB error:',e);return null}}
+async function clearDB(){await del('records');await del('sheets');await del('meta')}
+
+function toast(msg,type='info'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>t.classList.remove('show'),3000)}
+function norm(s){return(s==null?'':String(s)).replace(/[​‌‍﻿­]/g,'').replace(/[ 　]/g,' ').replace(/\s+/g,' ').trim()}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+const FIELDS_MAP={
+  '實體清單':[{c:0,l:'序号'},{c:1,l:'Entity'},{c:2,l:'中文名'},{c:3,l:'许可证审查政策'},{c:4,l:'联邦登记引用'},{c:5,l:'日期'}],
+  'MEU清单':[{c:1,l:'英文名'},{c:2,l:'中文名'}],
+  'CMICC':[{c:0,l:'英文名'},{c:1,l:'中文名'}],
+  'CMC List':[{c:0,l:'英文全称及简称'},{c:1,l:'中文简称'},{c:2,l:'中文全称'}],
+  'SDN List':[{c:0,l:'英文名称'},{c:1,l:'中文名称'},{c:2,l:'地址'},{c:3,l:'性质'},{c:4,l:'依据'}]
+};
+function buildRecords(wb){
+  allRecords=[];sheetInfo=[];
+  wb.SheetNames.forEach(sn=>{
+    const ws=wb.Sheets[sn];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(rows.length<=1)return;
+    const sm=srcMeta(sn);const fields=FIELDS_MAP[sn]||genFields(rows[0]);
+    let cnt=0;
+    for(let i=1;i<rows.length;i++){
+      const row=rows[i];if(!row.some(c=>c!=null&&String(c).trim()))continue;
+      const rec={sheet:sn,sourceLabel:sm.l,sourceClass:sm.cls,fields:{},searchKeys:[]};
+      fields.forEach(f=>{const v=norm(row[f.c]!=null?String(row[f.c]):'');if(v){rec.fields[f.l]=v;rec.searchKeys.push(v)}});
+      if(Object.keys(rec.fields).length>0){allRecords.push(rec);cnt++}
+    }
+    sheetInfo.push({name:sn,count:cnt,sourceClass:sm.cls})
+  });
+}
+function genFields(h){const m=Math.max(...h.map((_,i)=>i+1));const d=[];for(let i=0;i<m;i++)d.push({c:i,l:norm(h[i]||'')||'列'+(i+1)});return d}
+
+/* Search engine */
+function search(query,fuzzy,cs){
+  const qRaw=norm(query);
+  const q=cs?qRaw:qRaw.toLowerCase();
+  if(!q)return[];
+  let scored=[];
+  allRecords.forEach(r=>{
+    let bestScore=0;
+    r.searchKeys.forEach(key=>{
+      const k=cs?key:key.toLowerCase();
+      let score=0;
+      if(k===q) score=100;
+      else if(k.includes(q)) score=80+Math.round(20*q.length/k.length);
+      else if(q.includes(k)&&k.length>=2) score=50+Math.round(10*k.length/q.length);
+      if(fuzzy&&score===0){
+        let maxConsec=0,consec=0,qi=0;
+        for(let i=0;i<k.length&&qi<q.length;i++){
+          if(k[i]===q[qi]){consec++;qi++;maxConsec=Math.max(maxConsec,consec)}
+          else consec=0;
+        }
+        if(maxConsec>=2) score=Math.round(30*maxConsec/q.length);
+        if(score===0){
+          let ki=0;for(let i=0;i<q.length&&ki<k.length;i++){if(q[i]===k[ki])ki++}
+          if(ki>=2&&ki>=k.length*0.6) score=Math.round(20*ki/k.length);
+        }
+      }
+      if(score>bestScore)bestScore=score;
+    });
+    if(bestScore>0) scored.push({record:r,score:bestScore});
+  });
+  scored.sort((a,b)=>b.score-a.score);
+  return scored;
+}
+
+function groupMatches(matches){const g={};matches.forEach(m=>{if(!g[m.sheet])g[m.sheet]=[];g[m.sheet].push(m)});return g}
+function hl(text,query,cs){const escaped=query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');try{const re=new RegExp(escaped,cs?'g':'gi');return esc(text).replace(re,'<mark>$&</mark>')}catch{return esc(text)}}
+
+/* UI */
+function activateDB(meta){
+  document.getElementById('dbDot').className='db-dot on';
+  document.getElementById('dbInfo').innerHTML='<strong>'+currentFileName+'</strong> · '+allRecords.length+'条 · 更新于 '+(meta?.time||'');
+  document.getElementById('btnUpload').textContent='更新清单';
+  document.getElementById('btnUpload').className='hbtn hbtn-outline';
+  document.getElementById('btnDel').style.display='';
+  document.getElementById('btnQuick').disabled=false;
+  document.getElementById('btnBatch').disabled=false;
+  quickInput.focus();
+}
+
+function qccUrl(name){return 'https://www.qcc.com/web/search?key='+encodeURIComponent(name)}
+
+function showQuickResult(scored,query,cs){
+  const el=document.getElementById('quickResult');
+  if(!scored.length){
+    el.innerHTML='<div class="qr-card safe show"><div class="qr-top"><span class="qr-tag qt-safe">未命中</span><span class="qr-name">'+esc(query)+'</span><div class="qr-actions"><a class="qcc-link" href="'+qccUrl(query)+'" target="_blank" rel="noopener">企查查 &rarr;</a></div></div><div class="qr-empty">该企业未在任何制裁清单中找到匹配记录，建议在企查查进一步核实风险</div></div>';
+    return;
+  }
+  const top=scored[0];
+  const status=top.score>=80?'hit':top.score>=40?'suspect':'safe';
+  const tag=status==='hit'?'命中':status==='suspect'?'疑似':'未命中';
+  let html='<div class="qr-card '+status+' show"><div class="qr-top"><span class="qr-tag qt-'+status+'">'+tag+'</span><span class="qr-name">'+esc(query)+'</span><div class="qr-actions"><a class="qcc-link" href="'+qccUrl(query)+'" target="_blank" rel="noopener">企查查 &rarr;</a></div></div>';
+  if(status!=='safe'){
+    const gm=groupMatches(scored.map(s=>s.record));
+    html+='<div class="qr-detail">';
+    Object.entries(gm).forEach(([sn,recs])=>{
+      const sm=srcMeta(sn);
+      html+='<span class="qr-src '+sm.cls+'">'+sm.l+'</span> ';
+      recs.slice(0,3).forEach(r=>{
+        Object.entries(r.fields).forEach(([l,v])=>html+=esc(l)+': '+hl(v,norm(query),cs)+' | ');
+      });
+      if(recs.length>3) html+='等'+recs.length+'条 ';
+    });
+    html+='</div>';
+  } else {
+    html+='<div class="qr-empty">该企业未在任何制裁清单中找到匹配记录，建议在企查查进一步核实风险</div>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+/* INIT */
+(async()=>{
+  try{
+    const meta=await loadDB();
+    if(meta&&allRecords.length>0){
+      activateDB(meta);
+      toast('已加载制裁清单（'+allRecords.length+' 条）','success');
+    }else if(meta){
+      // meta存在但records为空，清空残留
+      document.getElementById('dbDot').className='db-dot off';
+      document.getElementById('dbInfo').textContent='未加载清单';
+      document.getElementById('btnUpload').textContent='上传清单';
+      document.getElementById('btnUpload').className='hbtn hbtn-primary';
+    }
+  }catch(err){
+    console.error('loadDB failed:',err);
+    // DB可能损坏，重建
+    try{indexedDB.deleteDatabase(DB_NAME)}catch(e){}
+  }
+})();
+
+/* DB upload */
+const modal=document.getElementById('modal');
+document.getElementById('btnUpload').addEventListener('click',()=>{
+  document.querySelector('#modal h3').textContent=allRecords.length>0?'更新制裁清单':'上传制裁清单';
+  modal.classList.add('show');
+});
+document.getElementById('modalClose').addEventListener('click',()=>modal.classList.remove('show'));
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('show')});
+
+function handleDBFile(file){
+  currentFileName=file.name;if(!file.size){toast('文件为空','error');return}
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls'].includes(ext)){toast('请上传 xlsx/xls','error');return}
+  if(typeof XLSX==='undefined'){toast('Excel库未加载','error');return}
+  const rd=new FileReader();
+  rd.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});buildRecords(wb);saveDB();activateDB({time:new Date().toLocaleString('zh-CN'),name:file.name});modal.classList.remove('show');toast('清单已加载（'+allRecords.length+' 条）','success')}catch(err){toast('解析失败: '+err.message,'error')}};
+  rd.readAsArrayBuffer(file);
+}
+
+document.getElementById('modalFileInput').addEventListener('change',e=>{if(e.target.files.length)handleDBFile(e.target.files[0]);e.target.value=''});
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files.length)handleDBFile(e.dataTransfer.files[0])});
+
+document.getElementById('btnDel').addEventListener('click',async()=>{
+  if(!confirm('确定删除制裁清单数据吗？（本地文件不受影响）'))return;
+  await clearDB();allRecords=[];sheetInfo=[];
+  document.getElementById('dbDot').className='db-dot off';
+  document.getElementById('dbInfo').textContent='未加载清单';
+  document.getElementById('btnUpload').textContent='上传清单';
+  document.getElementById('btnUpload').className='hbtn hbtn-primary';
+  document.getElementById('btnDel').style.display='none';
+  document.getElementById('btnQuick').disabled=true;
+  document.getElementById('btnBatch').disabled=true;
+  document.getElementById('quickResult').innerHTML='';
+  document.getElementById('batchResults').classList.remove('show');
+  toast('已删除','info')
+});
+
+/* Quick search */
+const quickInput=document.getElementById('quickInput');
+quickInput.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btnQuick').click()});
+document.getElementById('btnQuick').addEventListener('click',()=>{
+  const q=quickInput.value.trim();
+  if(!q){toast('请输入企业名称','error');return}
+  if(!allRecords.length){toast('请先加载制裁清单','error');return}
+  const results=search(q,document.getElementById('fuzzyOpt').checked,document.getElementById('caseOpt').checked);
+  showQuickResult(results,q,document.getElementById('caseOpt').checked);
+});
+
+/* Batch */
+const batchText=document.getElementById('batchText');
+batchText.addEventListener('input',updateBatchBtn);
+
+function getNames(){return batchText.value.trim().split(/\r?\n/).map(s=>s.replace(/^[\t ]+/,'').replace(/[\t ]+$/,'').trim()).filter(Boolean)}
+function updateBatchBtn(){document.getElementById('btnBatch').disabled=!(allRecords.length&&getNames().length)}
+
+document.getElementById('batchFileInput').addEventListener('change',e=>{
+  if(e.target.files.length)handleBatchFile(e.target.files[0]);e.target.value=''
+});
+
+async function handleBatchFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='txt'||ext==='csv'){
+    const buf=new Uint8Array(await file.arrayBuffer());
+    let enc='utf-8';
+    if(buf.length>=3&&buf[0]===0xEF&&buf[1]===0xBB&&buf[2]===0xBF)enc='utf-8';
+    else if(buf.length>=2&&buf[0]===0xFF&&buf[1]===0xFE)enc='utf-16le';
+    else{let ok=true,i=0;while(i<buf.length){const b=buf[i];if(b<0x80)i++;else if((b&0xE0)===0xC0){if(i+1>=buf.length||(buf[i+1]&0xC0)!==0x80){ok=false;break}i+=2}else if((b&0xF0)===0xE0){if(i+2>=buf.length||(buf[i+1]&0xC0)!==0x80||(buf[i+2]&0xC0)!==0x80){ok=false;break}i+=3}else{ok=false;break}}enc=ok?'utf-8':'gbk'}
+    let text=new TextDecoder(enc,{fatal:false}).decode(buf);
+    if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
+    const names=text.split(/\r?\n/).map(s=>norm(s)).filter(Boolean);
+    const existing=getNames();const set=new Set(existing);names.forEach(n=>set.add(n));
+    batchText.value=[...set].join('\n');updateBatchBtn();toast('已导入 '+names.length+' 个名称','success')
+  }else if(['xlsx','xls'].includes(ext)){
+    if(typeof XLSX==='undefined'){toast('Excel库未加载','error');return}
+    const buf=await file.arrayBuffer();const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const hdr=rows[0]||[];let nc=-1;
+    for(let c=0;c<hdr.length;c++)if(/企业|公司|名称|乙方|单位|name|company/i.test(String(hdr[c]))){nc=c;break}
+    if(nc<0)nc=0;
+    const names=rows.slice(1).map(r=>norm(r[nc]!=null?String(r[nc]):'')).filter(Boolean);
+    const existing=getNames();const set=new Set(existing);names.forEach(n=>set.add(n));
+    batchText.value=[...set].join('\n');updateBatchBtn();toast('已导入 '+names.length+' 个名称','success')
+  }else toast('不支持该格式','error')
+}
+
+document.getElementById('btnBatch').addEventListener('click',()=>{
+  const names=getNames();if(!names.length||!allRecords.length)return;
+  const fuzzy=document.getElementById('fuzzyOpt').checked,cs=document.getElementById('caseOpt').checked;
+
+  let results=names.map(name=>{
+    const scored=search(name,fuzzy,cs);
+    let status='green',matches=[];
+    if(scored.length>0){
+      const topScore=scored[0].score;
+      matches=scored.map(s=>s.record);
+      status=topScore>=80?'red':topScore>=40?'yellow':'green';
+    }
+    return {name,status,matches};
+  });
+
+  let redC=0,yellowC=0,greenC=0;
+  results.forEach(r=>{if(r.status==='red')redC++;else if(r.status==='yellow')yellowC++;else greenC++});
+
+  const br=document.getElementById('batchResults');
+  br.classList.add('show');
+  const sb=document.getElementById('summaryBar');
+  sb.className='summary-bar '+(redC>0?'red':yellowC>0?'yellow':'green');
+  sb.innerHTML='<div class="sb-item">共 <span class="sb-num" style="color:#1e293b">'+names.length+'</span> 家</div><div class="sb-item"><span class="sb-num nr">'+redC+'</span> 命中</div><div class="sb-item"><span class="sb-num ny">'+yellowC+'</span> 疑似</div><div class="sb-item"><span class="sb-num ng">'+greenC+'</span> 安全</div>';
+
+  let html='';
+  results.forEach((r,i)=>{
+    const tagCls=r.status==='red'?'tag-hit':r.status==='yellow'?'tag-suspect':'tag-safe';
+    const tagText=r.status==='red'?'命中':r.status==='yellow'?'疑似':'安全';
+    const hasM=r.matches.length>0;
+    html+='<tr><td>'+(i+1)+'</td><td style="font-weight:500">'+esc(r.name)+'</td><td><span class="tag '+tagCls+'">'+tagText+'</span></td><td>';
+    if(hasM){
+      const g=groupMatches(r.matches);let srcCnt=0;
+      Object.entries(g).forEach(([sn,recs])=>{srcCnt++;const sm=srcMeta(sn);html+='<span class="r-src '+sm.cls+'">'+sm.l+'</span> ';if(recs.length===1)Object.entries(recs[0].fields).forEach(([l,v])=>html+=esc(l)+': '+esc(v)+' | ');else html+=recs.length+'条 '});
+      if(r.matches.length>3||srcCnt>2) html+=' <span class="detail-toggle" data-idx="'+i+'">展开</span>';
+    }else html+='—';
+    html+='</td><td><a class="qcc" href="'+qccUrl(r.name)+'" target="_blank" rel="noopener">企查查</a></td></tr>';
+    if(hasM&&r.matches.length>3){
+      html+='<tr class="detail-row" id="drow-'+i+'"><td colspan="5"><div class="detail-content">';
+      const g2=groupMatches(r.matches);
+      Object.entries(g2).forEach(([sn,recs])=>{
+        const sm=srcMeta(sn);
+        html+='<div style="margin-bottom:8px"><span class="r-src '+sm.cls+'">'+sm.l+'</span>';
+        recs.forEach(m=>{Object.entries(m.fields).forEach(([l,v])=>{html+='<div class="df"><span class="dl">'+esc(l)+'</span><span class="dv">'+hl(v,norm(r.name),cs)+'</span></div>'});html+='<div style="border-bottom:1px dashed #e2e8f0;margin:4px 0"></div>'});
+        html+='</div>';
+      });
+      html+='</div></td></tr>';
+    }
+  });
+  document.getElementById('batchBody').innerHTML=html;
+  document.querySelectorAll('.detail-toggle').forEach(el=>{
+    el.addEventListener('click',function(){
+      const row=document.getElementById('drow-'+this.dataset.idx);
+      if(row){row.classList.toggle('open');this.textContent=row.classList.contains('open')?'收起':'展开'}
+    })
+  });
+  br.scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+document.getElementById('btnExport').addEventListener('click',()=>{
+  const rows=[['序号','合作方名称','排查结果','匹配清单','匹配详情','企查查链接']];
+  document.querySelectorAll('#batchBody tr:not(.detail-row)').forEach((tr,i)=>{
+    const cells=tr.querySelectorAll('td');if(cells.length<5)return;
+    rows.push([i+1,cells[1].textContent.trim(),cells[2].textContent.trim(),cells[3].textContent.replace(/展开|收起/g,'').trim(),cells[3].textContent.trim(),'https://www.qcc.com/web/search?key='+encodeURIComponent(cells[1].textContent.trim())])
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:5},{wch:30},{wch:8},{wch:20},{wch:60},{wch:40}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'排查结果');
+  XLSX.writeFile(wb,'合规排查结果_'+new Date().toLocaleDateString('zh-CN').replace(/\//g,'')+'.xlsx');
+  toast('已导出','success')
+});
+</script>
+</body>
+</html>
